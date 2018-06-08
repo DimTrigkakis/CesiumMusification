@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.5/lodash.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@magenta/music@0.0.8/dist/magentamusic.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tone@0.12.80/build/Tone.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/web-animations-js@2.3.1/web-animations.min.js"></script>
+<script src="https://cdn.rawgit.com/tambien/StartAudioContext/8da8637e/StartAudioContext.js"></script>
+<script src="https://cdn.rawgit.com/danigb/tonal/9b6b1663/dist/tonal.min.js"></script>
+<script src="./musifier.js"></script>
+
+<style>
+    html,body,
+#container {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(0.25turn, #752525, #050505, #252575);
+  color: #f3f3f3;
+}
+
+#container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-evenly;
+}
+#vis {
+  width: 95vmin;
+  height: 95vmin;
+  overflow: visible;
+}
+
+.halo {
+  opacity: 0;
+}
+.note {
+  stroke-width: 0.5;
+  stroke: #151515;
+  fill: rgba(255, 255, 255, 1);
+  opacity: 0.4;
+}
+.hover .note {
+  opacity: 0.7;
+}
+.on .note {
+  fill: #e91e63;
+  opacity: 1;
+}
+
+.pointer-area {
+  stroke: none;
+  opacity: 0;
+}
+
+.controls {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+}
+.control-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.controls button {
+  width: 100%;
+  min-width: 7vw;
+  height: 4vh;
+  margin: 2px;
+  background: none;
+  color: white;
+  border: 1px solid white;
+}
+.controls button:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+.controls button.active {
+  background: white;
+  color: black;
+}
+
+#generating,
+#loading {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 32px;
+}
+
+</style>
+<div id="container">
+  <div class="controls">
+    <div class="control-group">
+      <button class="tonic-left active" data-tonic="0">C</button>
+      <button class="tonic-left" data-tonic="1">C&#x266F; / D&#x266d;</button>
+      <button class="tonic-left" data-tonic="2">D</button>
+      <button class="tonic-left" data-tonic="3">E&#x266F; / E&#x266d;</button>
+      <button class="tonic-left" data-tonic="4">E</button>
+      <button class="tonic-left" data-tonic="5">F</button>
+      <button class="tonic-left" data-tonic="6">F&#x266F; / G&#x266d;</button>
+      <button class="tonic-left" data-tonic="7">G</button>
+      <button class="tonic-left" data-tonic="8">G&#x266F; / A&#x266d;</button>
+      <button class="tonic-left" data-tonic="9">A</button>
+      <button class="tonic-left" data-tonic="10">A&#x266F; / B&#x266d;</button>
+      <button class="tonic-left" data-tonic="11">B</button>
+    </div>
+    <div class="control-group">
+      <button class="chord-left active" data-chord="major">Major</button>
+      <button class="chord-left" data-chord="minor">Minor</button>
+      <button class="chord-left" data-chord="major7th">Major 7th</button>
+      <button class="chord-left" data-chord="minor7th">Minor 7th</button>
+      <button class="chord-left" data-chord="dominant7th">Dominant 7th</button>
+      <button class="chord-left" data-chord="sus2">Sus2</button>
+      <button class="chord-left" data-chord="sus4">Sus4</button>
+    </div>
+  </div>
+  <svg id="vis" viewBox="0 0 1000 1000">
+    <defs>
+      <radialGradient id="halo">
+        <stop offset="0%" stop-color="rgba(255, 255, 255, 0.5)" />
+        <stop offset="95%" stop-color="rgba(255, 255, 255, 0.5)" />
+        <stop offset="100%" stop-color="rgba(255, 255, 255, 0)" />
+      </radialGradient>
+    </defs>
+    <g id="vis-halos"></g>
+    <g id="vis-elements"></g>
+  </svg>
+  <div class="controls">
+    <div class="control-group">
+      <button class="tonic-right active" data-tonic="0">C</button>
+      <button class="tonic-right" data-tonic="1">C&#x266F; / D&#x266d;</button>
+      <button class="tonic-right" data-tonic="2">D</button>
+      <button class="tonic-right" data-tonic="3">E&#x266F; / E&#x266d;</button>
+      <button class="tonic-right" data-tonic="4">E</button>
+      <button class="tonic-right" data-tonic="5">F</button>
+      <button class="tonic-right" data-tonic="6">F&#x266F; / G&#x266d;</button>
+      <button class="tonic-right" data-tonic="7">G</button>
+      <button class="tonic-right" data-tonic="8">G&#x266F; / A&#x266d;</button>
+      <button class="tonic-right" data-tonic="9">A</button>
+      <button class="tonic-right" data-tonic="10">A&#x266F; / B&#x266d;</button>
+      <button class="tonic-right" data-tonic="11">B</button>
+    </div>
+    <div class="control-group">
+      <button class="chord-right active" data-chord="major">Major</button>
+      <button class="chord-right" data-chord="minor">Minor</button>
+      <button class="chord-right" data-chord="major7th">Major 7th</button>
+      <button class="chord-right" data-chord="minor7th">Minor 7th</button>
+      <button class="chord-right" data-chord="dominant7th">Dominant 7th</button>
+      <button class="chord-right" data-chord="sus2">Sus2</button>
+      <button class="chord-right" data-chord="sus4">Sus4</button>
+    </div>
+  </div>
+</div>
+<div id="loading">Loading models&hellip;</div>
+<div id="generating" style="display: none">Generating&hellip;</div>
+</body>
+</html>
